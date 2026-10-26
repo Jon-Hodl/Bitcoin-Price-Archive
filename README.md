@@ -8,12 +8,12 @@ A free, public API for historical Bitcoin price data. Updated daily from mempool
 
 ### Get All Prices
 ```bash
-curl https://jon-hodl.github.io/Bitcoin-Price/prices.json
+curl https://jon-hodl.github.io/Bitcoin-Price-Archive/prices.json
 ```
 
 ### JavaScript Fetch
 ```javascript
-const response = await fetch('https://jon-hodl.github.io/Bitcoin-Price/prices.json');
+const response = await fetch('https://jon-hodl.github.io/Bitcoin-Price-Archive/prices.json');
 const prices = await response.json();
 
 // Access specific date
@@ -83,7 +83,7 @@ This API is CORS-enabled via GitHub Pages. Use it from any website:
 
 ```html
 <script>
-fetch('https://jon-hodl.github.io/Bitcoin-Price/prices.json')
+fetch('https://jon-hodl.github.io/Bitcoin-Price-Archive/prices.json')
   .then(r => r.json())
   .then(prices => console.log('Loaded', Object.keys(prices).length, 'days of data'));
 </script>

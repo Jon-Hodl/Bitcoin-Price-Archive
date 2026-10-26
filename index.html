@@ -8,15 +8,15 @@
     <!-- Open Graph / Social Media -->
     <meta property="og:title" content="The Bitcoin Price Archive">
     <meta property="og:description" content="Daily archives of the price of bitcoin since the Genesis block. Free API with 5,859+ days of OHLC data.">
-    <meta property="og:image" content="https://jon-hodl.github.io/Bitcoin-Price/og-image.png">
-    <meta property="og:url" content="https://jon-hodl.github.io/Bitcoin-Price/">
+    <meta property="og:image" content="https://jon-hodl.github.io/Bitcoin-Price-Archive/og-image.png">
+    <meta property="og:url" content="https://jon-hodl.github.io/Bitcoin-Price-Archive/">
     <meta property="og:type" content="website">
     
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="The Bitcoin Price Archive">
     <meta name="twitter:description" content="Daily archives of the price of bitcoin since the Genesis block.">
-    <meta name="twitter:image" content="https://jon-hodl.github.io/Bitcoin-Price/og-image.png">
+    <meta name="twitter:image" content="https://jon-hodl.github.io/Bitcoin-Price-Archive/og-image.png">
     
     <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -479,7 +479,7 @@
         
         async function init() {
             try {
-                const response = await fetch('https://jon-hodl.github.io/Bitcoin-Price/prices.json');
+                const response = await fetch('https://jon-hodl.github.io/Bitcoin-Price-Archive/prices.json');
                 if (!response.ok) throw new Error('Failed to load price data');
                 priceData = await response.json();
                 

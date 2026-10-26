@@ -1,7 +1,7 @@
 # Social Media Preview Setup
 
 ## Option 1: GitHub Repository Settings (Recommended)
-1. Go to: https://github.com/Jon-Hodl/Bitcoin-Price/settings
+1. Go to: https://github.com/Jon-Hodl/Bitcoin-Price-Archive/settings
 2. Scroll down to "Social preview"
 3. Click "Edit"
 4. Upload an image (recommended: 1280×640px)
@@ -26,4 +26,4 @@ The HTML includes Open Graph meta tags that will display when shared on:
 - Discord
 - Telegram
 
-Meta tags reference: `https://jon-hodl.github.io/Bitcoin-Price/og-image.png`
+Meta tags reference: `https://jon-hodl.github.io/Bitcoin-Price-Archive/og-image.png`

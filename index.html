@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Bitcoin Price Archive - Historical Prices</title>
+    
+    <!-- Open Graph / Social Media -->
+    <meta property="og:title" content="The Bitcoin Price Archive">
+    <meta property="og:description" content="Daily archives of the price of bitcoin since the Genesis block. Free API with 5,859+ days of OHLC data.">
+    <meta property="og:image" content="https://jon-hodl.github.io/Bitcoin-Price/og-image.png">
+    <meta property="og:url" content="https://jon-hodl.github.io/Bitcoin-Price/">
+    <meta property="og:type" content="website">
+    
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="The Bitcoin Price Archive">
+    <meta name="twitter:description" content="Daily archives of the price of bitcoin since the Genesis block.">
+    <meta name="twitter:image" content="https://jon-hodl.github.io/Bitcoin-Price/og-image.png">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --bitcoin-orange: #f7931a;
+            --bitcoin-orange-glow: rgba(247, 147, 26, 0.4);
+            --bg-dark: #0a0a0a;
+            --bg-card: #111111;
+            --bg-elevated: #1a1a1a;
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0a0;
+            --text-muted: #666666;
+            --border-color: #333333;
+            --success: #22c55e;
+            --cyan: #00d4ff;
+            --cyan-glow: rgba(0, 212, 255, 0.3);
+        }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Ubuntu', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .logo {
+            font-size: 64px;
+            margin-bottom: 16px;
+            letter-spacing: 8px;
+        }
+
+        h1 {
+            font-size: 36px;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, var(--bitcoin-orange) 0%, #fff 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 16px;
+        }
+        
+        /* Loading & Error */
+        .loading {
+            text-align: center;
+            padding: 60px;
+            color: var(--text-muted);
+        }
+        
+        .error {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid #ef4444;
+            color: #ef4444;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        /* Year Section */
+        .year-section {
+            margin-bottom: 20px;
+        }
+        
+        .year-header {
+            background: linear-gradient(145deg, var(--bg-elevated) 0%, var(--bg-card) 100%);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 20px 28px;
+            cursor: pointer;
+            display: grid;
+            grid-template-columns: 100px 1fr auto;
+            gap: 24px;
+            align-items: center;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .year-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--bitcoin-orange) 0%, #ffd700 50%, var(--bitcoin-orange) 100%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .year-header:hover {
+            background: linear-gradient(145deg, #1f1f1f 0%, #161616 100%);
+            border-color: rgba(247, 147, 26, 0.5);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(247, 147, 26, 0.15);
+        }
+        
+        .year-header:hover::before {
+            opacity: 1;
+        }
+        
+        .year-header.expanded {
+            background: linear-gradient(145deg, rgba(247, 147, 26, 0.15) 0%, rgba(247, 147, 26, 0.05) 100%);
+            border-color: var(--bitcoin-orange);
+            box-shadow: 0 8px 30px var(--bitcoin-orange-glow);
+        }
+        
+        .year-header.expanded::before {
+            opacity: 1;
+        }
+
+        .year-name {
+            font-size: 32px;
+            font-weight: 700;
+            font-family: 'Ubuntu', sans-serif;
+            color: var(--text-primary);
+        }
+
+        .year-stats {
+            display: flex;
+            gap: 32px;
+            justify-content: center;
+        }
+
+        .year-stat {
+            text-align: center;
+        }
+
+        .year-stat-label {
+            display: block;
+            font-size: 10px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+
+        .year-stat-value {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .year-stat-value.high { color: var(--success); }
+        .year-stat-value.low { color: #ef4444; }
+        .year-stat-value.avg { color: var(--bitcoin-orange); }
+
+        .year-toggle {
+            font-size: 16px;
+            color: var(--bitcoin-orange);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: rgba(247, 147, 26, 0.1);
+        }
+
+        .year-header:hover .year-toggle {
+            background: rgba(247, 147, 26, 0.2);
+            transform: scale(1.1);
+        }
+
+        .year-header.expanded .year-toggle {
+            transform: rotate(180deg);
+            background: var(--bitcoin-orange);
+            color: #000;
+        }
+        
+        /* Months Container */
+        .months-container {
+            display: none;
+            padding: 16px 0 0 0;
+            animation: slideDown 0.3s ease;
+        }
+        
+        .months-container.expanded {
+            display: block;
+        }
+        
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* Month Tab */
+        .month-tab {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            margin-bottom: 8px;
+            overflow: hidden;
+        }
+        
+        .month-header {
+            padding: 16px 20px;
+            cursor: pointer;
+            display: grid;
+            grid-template-columns: 100px 1fr 1fr 1fr 1fr auto;
+            gap: 12px;
+            align-items: center;
+            transition: all 0.2s ease;
+        }
+        
+        .month-header:hover {
+            background: rgba(247, 147, 26, 0.05);
+        }
+        
+        .month-name {
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 15px;
+        }
+        
+        .month-stat {
+            text-align: center;
+        }
+        
+        .month-stat-label {
+            font-size: 10px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 2px;
+        }
+        
+        .month-stat-value {
+            font-size: 14px;
+            font-weight: 600;
+        }
+        
+        .month-stat.high { color: var(--success); }
+        .month-stat.low { color: #ef4444; }
+        .month-stat.avg { color: var(--bitcoin-orange); }
+        
+        .month-toggle {
+            color: var(--text-muted);
+            font-size: 12px;
+            transition: transform 0.3s ease;
+        }
+        
+        .month-tab.expanded .month-toggle {
+            transform: rotate(180deg);
+        }
+        
+        /* Days Container */
+        .days-container {
+            display: none;
+            background: rgba(0,0,0,0.3);
+            border-top: 1px solid var(--border-color);
+        }
+        
+        .month-tab.expanded .days-container {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        /* Days Table */
+        .days-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        
+        .days-table th {
+            background: rgba(255,255,255,0.03);
+            padding: 12px 16px;
+            text-align: left;
+            font-size: 10px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+        }
+        
+        .days-table td {
+            padding: 10px 16px;
+            border-top: 1px solid var(--border-color);
+        }
+        
+        .days-table tr:hover {
+            background: rgba(247, 147, 26, 0.05);
+        }
+        
+        .day-date {
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+        
+        .day-price-high { color: var(--success); font-weight: 600; }
+        .day-price-low { color: #ef4444; font-weight: 600; }
+        .day-price-open, .day-price-close { color: var(--text-secondary); }
+        .day-price-volatility { 
+            color: var(--cyan); 
+            font-weight: 600;
+            text-shadow: 0 0 10px var(--cyan-glow);
+        }
+
+        /* Chart Containers */
+        .year-chart-container {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            margin: 16px 0;
+            display: none;
+        }
+
+        .year-chart-container.expanded {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .month-chart-container {
+            background: rgba(0,0,0,0.3);
+            border-top: 1px solid var(--border-color);
+            padding: 20px;
+            display: none;
+        }
+
+        .month-tab.expanded .month-chart-container {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        #alltime-chart-container {
+            height: 360px;
+            max-height: 360px;
+            overflow: hidden;
+        }
+
+        #alltime-chart-container canvas {
+            max-height: 280px !important;
+        }
+        
+        .back-link {
+            display: inline-block;
+            margin-top: 40px;
+            color: var(--bitcoin-orange);
+            text-decoration: none;
+            font-size: 14px;
+        }
+        
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        
+        @media (max-width: 768px) {
+            h1 { font-size: 28px; }
+            
+            .year-header {
+                grid-template-columns: 1fr auto;
+                gap: 12px;
+                padding: 16px 20px;
+            }
+
+            .year-name {
+                font-size: 24px;
+            }
+
+            .year-stats {
+                grid-column: 1 / -1;
+                gap: 16px;
+                justify-content: flex-start;
+                flex-wrap: wrap;
+            }
+
+            .year-stat-value {
+                font-size: 13px;
+            }
+            
+            .month-header {
+                grid-template-columns: 70px 1fr 1fr 1fr 1fr auto;
+                gap: 6px;
+                padding: 10px;
+            }
+            
+            .month-name {
+                font-size: 12px;
+            }
+            
+            .month-stat-label {
+                font-size: 8px;
+            }
+            
+            .month-stat-value {
+                font-size: 11px;
+            }
+            
+            .days-table th,
+            .days-table td {
+                padding: 8px 10px;
+                font-size: 11px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">📈📉</div>
+            <h1>The Bitcoin Price Archive</h1>
+            <p class="subtitle">Simple bitcoin price archives all the way back to The Genesis Block</p>
+        </header>
+        
+        <!-- All-Time Chart -->
+        <div id="alltime-chart-container" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px; padding: 24px; margin-bottom: 30px;">
+            <h2 style="text-align: center; margin-bottom: 16px; font-size: 16px; color: var(--text-secondary);">Annual Price History (The last 12 years)</h2>
+            <canvas id="alltime-chart" style="width: 100%; height: 280px;"></canvas>
+        </div>
+        
+        <div id="loading" class="loading">
+            Loading price database...
+        </div>
+        
+        <div id="error" class="error" style="display: none;"></div>
+        
+        <div id="years-container"></div>
+
+        <!-- Donation Footer -->
+        <div style="text-align: center; margin-top: 40px; padding: 24px; background: var(--bg-card); border-radius: 12px; border: 1px solid var(--border-color);">
+            <p style="color: var(--text-secondary); font-size: 14px; line-height: 1.6;">
+                Made with 🧨 by bitcoiners (Jon & Finn) for bitcoiners.<br>
+                Zaps are always welcome <a href="lightning:jon-hodl@rizful.com" style="color: var(--bitcoin-orange); text-decoration: none;">jon-hodl@rizful.com</a>
+            </p>
+        </div>
+    </div>
+
+    <script>
+        let priceData = {};
+        const monthNames = [
+            'January', 'February', 'March', 'April', 'May', 'June',
+            'July', 'August', 'September', 'October', 'November', 'December'
+        ];
+        
+        async function init() {
+            try {
+                const response = await fetch('https://jon-hodl.github.io/Bitcoin-Price/prices.json');
+                if (!response.ok) throw new Error('Failed to load price data');
+                priceData = await response.json();
+                
+                buildYearSections();
+                renderAllTimeChart();
+                document.getElementById('loading').style.display = 'none';
+                
+            } catch (e) {
+                showError('Failed to load price database. Please try again later.');
+            }
+        }
+        
+        function buildYearSections() {
+            const container = document.getElementById('years-container');
+            
+            // Group data by year and month
+            const yearData = {};
+            
+            Object.entries(priceData).forEach(([date, data]) => {
+                const year = date.substring(0, 4);
+                const month = parseInt(date.substring(5, 7)) - 1;
+                
+                if (!yearData[year]) {
+                    yearData[year] = {};
+                }
+                if (!yearData[year][month]) {
+                    yearData[year][month] = [];
+                }
+                
+                yearData[year][month].push({
+                    date: date,
+                    ...data
+                });
+            });
+            
+            // Sort years descending (newest first)
+            const sortedYears = Object.keys(yearData).sort((a, b) => b - a);
+            
+            sortedYears.forEach(year => {
+                const yearSection = document.createElement('div');
+                yearSection.className = 'year-section';
+                
+                // Calculate year stats
+                let yearHigh = 0, yearLow = Infinity, yearAvg = 0, yearVolatility = 0, yearVolatilityPct = 0;
+                const allDays = Object.values(yearData[year]).flat();
+                if (allDays.length > 0) {
+                    const highs = allDays.map(d => d.h);
+                    const lows = allDays.map(d => d.l);
+                    const closes = allDays.map(d => d.c);
+                    yearHigh = Math.max(...highs);
+                    yearLow = Math.min(...lows);
+                    yearAvg = closes.reduce((a, b) => a + b, 0) / closes.length;
+                    yearVolatility = yearHigh - yearLow;
+                    yearVolatilityPct = (yearVolatility / yearLow) * 100;
+                }
+
+                // Year header with stats
+                const yearHeader = document.createElement('div');
+                yearHeader.className = 'year-header';
+                yearHeader.innerHTML = `
+                    <span class="year-name">${year}</span>
+                    <div class="year-stats">
+                        <div class="year-stat">
+                            <span class="year-stat-label">High</span>
+                            <span class="year-stat-value high">${allDays.length ? '$' + Math.round(yearHigh).toLocaleString() : '--'}</span>
+                        </div>
+                        <div class="year-stat">
+                            <span class="year-stat-label">Low</span>
+                            <span class="year-stat-value low">${allDays.length ? '$' + Math.round(yearLow).toLocaleString() : '--'}</span>
+                        </div>
+                        <div class="year-stat">
+                            <span class="year-stat-label">Vol</span>
+                            <span class="year-stat-value" style="color: var(--cyan);">${allDays.length ? '$' + Math.round(yearVolatility).toLocaleString() + ' (' + yearVolatilityPct.toFixed(0) + '%)' : '--'}</span>
+                        </div>
+                        <div class="year-stat">
+                            <span class="year-stat-label">Avg</span>
+                            <span class="year-stat-value avg">${allDays.length ? '$' + Math.round(yearAvg).toLocaleString() : '--'}</span>
+                        </div>
+                    </div>
+                    <span class="year-toggle">▼</span>
+                `;
+                yearHeader.onclick = () => toggleYear(yearHeader, monthsContainer);
+                
+                // Months container
+                const monthsContainer = document.createElement('div');
+                monthsContainer.className = 'months-container';
+                
+                // Build months for this year
+                for (let month = 0; month < 12; month++) {
+                    const monthDays = yearData[year]?.[month] || [];
+                    
+                    const monthTab = document.createElement('div');
+                    monthTab.className = 'month-tab';
+                    
+                    // Calculate month stats
+                    let monthHigh = 0, monthLow = Infinity, monthAvg = 0, monthVolatility = 0, monthVolatilityPct = 0;
+                    if (monthDays.length > 0) {
+                        const highs = monthDays.map(d => d.h);
+                        const lows = monthDays.map(d => d.l);
+                        const closes = monthDays.map(d => d.c);
+                        monthHigh = Math.max(...highs);
+                        monthLow = Math.min(...lows);
+                        monthAvg = closes.reduce((a, b) => a + b, 0) / closes.length;
+                        monthVolatility = monthHigh - monthLow;
+                        monthVolatilityPct = (monthVolatility / monthLow) * 100;
+                    }
+                    
+                    // Month header with stats
+                    const monthHeader = document.createElement('div');
+                    monthHeader.className = 'month-header';
+                    monthHeader.onclick = (e) => {
+                        e.stopPropagation();
+                        toggleMonth(monthTab, daysContainer);
+                    };
+                    
+                    monthHeader.innerHTML = `
+                        <span class="month-name">${monthNames[month]}</span>
+                        <div class="month-stat">
+                            <div class="month-stat-label">High</div>
+                            <div class="month-stat-value month-stat high">${monthDays.length ? '$' + Math.round(monthHigh).toLocaleString() : '--'}</div>
+                        </div>
+                        <div class="month-stat">
+                            <div class="month-stat-label">Low</div>
+                            <div class="month-stat-value month-stat low">${monthDays.length ? '$' + Math.round(monthLow).toLocaleString() : '--'}</div>
+                        </div>
+                        <div class="month-stat">
+                            <div class="month-stat-label">Vol</div>
+                            <div class="month-stat-value" style="color: var(--cyan); text-shadow: 0 0 8px var(--cyan-glow);">${monthDays.length ? '$' + Math.round(monthVolatility).toLocaleString() + ' (' + monthVolatilityPct.toFixed(0) + '%)' : '--'}</div>
+                        </div>
+                        <div class="month-stat">
+                            <div class="month-stat-label">Avg</div>
+                            <div class="month-stat-value month-stat avg">${monthDays.length ? '$' + Math.round(monthAvg).toLocaleString() : '--'}</div>
+                        </div>
+                        <span class="month-toggle">▼</span>
+                    `;
+                    
+                    // Days container (table of daily prices)
+                    const daysContainer = document.createElement('div');
+                    daysContainer.className = 'days-container';
+                    
+                    if (monthDays.length > 0) {
+                        // Sort by date
+                        monthDays.sort((a, b) => a.date.localeCompare(b.date));
+                        
+                        const table = document.createElement('table');
+                        table.className = 'days-table';
+                        table.innerHTML = `
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Open</th>
+                                    <th>High</th>
+                                    <th>Low</th>
+                                    <th>Volatility ($ / %)</th>
+                                    <th>Close</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${monthDays.map(day => {
+                                    // Parse date manually to avoid timezone issues
+                                    const [y, m, d] = day.date.split('-').map(Number);
+                                    const dateStr = monthNames[m-1].substring(0, 3) + ' ' + d;
+                                    const volatility = day.h - day.l;
+                                    const volatilityPct = ((volatility / day.l) * 100).toFixed(1);
+                                    return `
+                                        <tr>
+                                            <td class="day-date">${dateStr}</td>
+                                            <td class="day-price-open">$${day.o.toLocaleString()}</td>
+                                            <td class="day-price-high">$${day.h.toLocaleString()}</td>
+                                            <td class="day-price-low">$${day.l.toLocaleString()}</td>
+                                            <td class="day-price-volatility">$${volatility.toLocaleString()} (${volatilityPct}%)</td>
+                                            <td class="day-price-close">$${day.c.toLocaleString()}</td>
+                                        </tr>
+                                    `;
+                                }).join('')}
+                            </tbody>
+                        `;
+                        daysContainer.appendChild(table);
+                    } else {
+                        daysContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-muted);">No data for this month</div>';
+                    }
+                    
+                    // Month chart container
+                    const monthChartContainer = document.createElement('div');
+                    monthChartContainer.className = 'month-chart-container';
+                    monthChartContainer.innerHTML = `<canvas id="month-chart-${year}-${month}" style="width: 100%; height: 200px;"></canvas>`;
+                    
+                    // Store month data for chart rendering
+                    monthHeader.dataset.year = year;
+                    monthHeader.dataset.month = month;
+                    monthHeader.dataset.monthData = JSON.stringify(monthDays);
+                    
+                    monthTab.appendChild(monthHeader);
+                    monthTab.appendChild(monthChartContainer);
+                    monthTab.appendChild(daysContainer);
+                    monthsContainer.appendChild(monthTab);
+                }
+                
+                // Year chart container
+                const yearChartContainer = document.createElement('div');
+                yearChartContainer.className = 'year-chart-container';
+                yearChartContainer.innerHTML = `<canvas id="year-chart-${year}" style="width: 100%; height: 250px;"></canvas>`;
+                
+                yearSection.appendChild(yearHeader);
+                yearSection.appendChild(yearChartContainer);
+                yearSection.appendChild(monthsContainer);
+                container.appendChild(yearSection);
+                
+                // Store year data for chart rendering
+                yearHeader.dataset.year = year;
+                yearHeader.dataset.yearData = JSON.stringify(yearData[year]);
+                yearHeader.dataset.yearAvg = yearAvg;
+            });
+        }
+        
+        // Store chart instances to prevent re-rendering
+        const yearCharts = {};
+        const monthCharts = {};
+
+        function toggleYear(header, container) {
+            const isExpanded = container.classList.contains('expanded');
+            const yearChartContainer = header.nextElementSibling;
+            const year = header.dataset.year;
+            
+            // Close all other years
+            document.querySelectorAll('.months-container.expanded').forEach(el => {
+                el.classList.remove('expanded');
+                el.previousElementSibling.classList.remove('expanded');
+                el.previousElementSibling.previousElementSibling.classList.remove('expanded');
+            });
+            document.querySelectorAll('.year-chart-container.expanded').forEach(el => {
+                el.classList.remove('expanded');
+            });
+            
+            // Toggle this year
+            if (!isExpanded) {
+                container.classList.add('expanded');
+                header.classList.add('expanded');
+                yearChartContainer.classList.add('expanded');
+                
+                // Render year chart if not already rendered
+                if (!yearCharts[year]) {
+                    renderYearChart(year, JSON.parse(header.dataset.yearData), parseFloat(header.dataset.yearAvg));
+                }
+            }
+        }
+        
+        function toggleMonth(tab, daysContainer) {
+            const isExpanded = tab.classList.contains('expanded');
+            const monthHeader = tab.querySelector('.month-header');
+            const monthChartContainer = tab.querySelector('.month-chart-container');
+            const year = monthHeader.dataset.year;
+            const month = monthHeader.dataset.month;
+            const chartId = `${year}-${month}`;
+            
+            // Close other months in same year
+            const siblings = tab.parentElement.querySelectorAll('.month-tab.expanded');
+            siblings.forEach(el => {
+                if (el !== tab) el.classList.remove('expanded');
+            });
+            
+            // Toggle this month
+            tab.classList.toggle('expanded', !isExpanded);
+            
+            // Render month chart if expanding and not already rendered
+            if (!isExpanded && !monthCharts[chartId]) {
+                const monthDays = JSON.parse(monthHeader.dataset.monthData);
+                renderMonthChart(year, month, monthDays);
+            }
+        }
+        
+        function renderAllTimeChart() {
+            const canvas = document.getElementById('alltime-chart');
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            
+            // Calculate annual highs and lows
+            const yearStats = {};
+            
+            Object.entries(priceData).forEach(([date, data]) => {
+                const year = date.substring(0, 4);
+                if (!yearStats[year]) {
+                    yearStats[year] = { highs: [], lows: [] };
+                }
+                // Only add non-zero prices (early 2009 had $0)
+                if (data.h > 0) yearStats[year].highs.push(data.h);
+                if (data.l > 0) yearStats[year].lows.push(data.l);
+            });
+            
+            // Filter out years with no valid price data (2009 had $0)
+            const validYears = Object.keys(yearStats).filter(year => 
+                yearStats[year].highs.length > 0 && yearStats[year].lows.length > 0
+            ).sort();
+            
+            // Get last 12 years only (4 halving cycles)
+            let years = validYears.slice(-12);
+            
+            const annualHighs = years.map(year => Math.max(...yearStats[year].highs));
+            const annualLows = years.map(year => Math.min(...yearStats[year].lows));
+            
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: years,
+                    datasets: [
+                        {
+                            label: 'Annual High',
+                            data: annualHighs,
+                            borderColor: '#22c55e',
+                            backgroundColor: 'transparent',
+                            borderWidth: 2,
+                            tension: 0.3,
+                            pointRadius: 3,
+                            pointBackgroundColor: '#22c55e',
+                            fill: false,
+                            spanGaps: true
+                        },
+                        {
+                            label: 'Annual Low',
+                            data: annualLows,
+                            borderColor: '#ef4444',
+                            backgroundColor: 'rgba(0, 212, 255, 0.3)',
+                            borderWidth: 2,
+                            tension: 0.3,
+                            pointRadius: 3,
+                            pointBackgroundColor: '#ef4444',
+                            fill: '-1',
+                            spanGaps: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    resizeDelay: 0,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: { color: '#fff', usePointStyle: true, boxWidth: 10 }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const value = context.parsed.y;
+                                    const formatted = value >= 1000 
+                                        ? '$' + (value / 1000).toFixed(1) + 'k'
+                                        : '$' + value.toLocaleString();
+                                    return context.dataset.label + ': ' + formatted;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: 'rgba(255,255,255,0.05)', drawBorder: false },
+                            ticks: { color: '#888', font: { size: 10 }, maxTicksLimit: 12 }
+                        },
+                        y: {
+                            type: 'logarithmic',
+                            min: 100,
+                            grid: { color: 'rgba(255,255,255,0.05)', drawBorder: false },
+                            ticks: {
+                                color: '#888',
+                                callback: function(value) {
+                                    if (value >= 1000) return '$' + (value / 1000).toFixed(0) + 'k';
+                                    if (value >= 1) return '$' + value.toFixed(0);
+                                    return '$' + value.toFixed(2);
+                                }
+                            }
+                        }
+                    },
+                    interaction: { intersect: false, mode: 'index' }
+                }
+            });
+        }
+
+        function renderYearChart(year, yearData, yearAvg) {
+            const canvas = document.getElementById(`year-chart-${year}`);
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            
+            // Prepare monthly data
+            const months = [];
+            const highs = [];
+            const lows = [];
+            const averages = [];
+            
+            for (let m = 0; m < 12; m++) {
+                const monthDays = yearData[m] || [];
+                if (monthDays.length > 0) {
+                    const monthHigh = Math.max(...monthDays.map(d => d.h));
+                    const monthLow = Math.min(...monthDays.map(d => d.l));
+                    const monthAvg = monthDays.reduce((sum, d) => sum + d.c, 0) / monthDays.length;
+                    
+                    months.push(monthNames[m].substring(0, 3));
+                    highs.push(monthHigh);
+                    lows.push(monthLow);
+                    averages.push(monthAvg);
+                }
+            }
+            
+            yearCharts[year] = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: months,
+                    datasets: [
+                        {
+                            label: 'Monthly High',
+                            data: highs,
+                            borderColor: '#22c55e',
+                            backgroundColor: 'transparent',
+                            borderWidth: 2,
+                            tension: 0.3,
+                            pointRadius: 4,
+                            pointBackgroundColor: '#22c55e',
+                            fill: false
+                        },
+                        {
+                            label: 'Monthly Low',
+                            data: lows,
+                            borderColor: '#ef4444',
+                            backgroundColor: 'rgba(0, 212, 255, 0.3)',
+                            borderWidth: 2,
+                            tension: 0.3,
+                            pointRadius: 4,
+                            pointBackgroundColor: '#ef4444',
+                            fill: '-1'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: { color: '#fff', usePointStyle: true, boxWidth: 10 }
+                        },
+                        title: {
+                            display: true,
+                            text: `${year} - Monthly Price Range`,
+                            color: '#fff',
+                            font: { size: 14 }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: 'rgba(255,255,255,0.05)', drawBorder: false },
+                            ticks: { color: '#888', font: { size: 11 } }
+                        },
+                        y: {
+                            grid: { color: 'rgba(255,255,255,0.05)', drawBorder: false },
+                            ticks: {
+                                color: '#888',
+                                callback: function(value) {
+                                    if (value >= 1000) return '$' + (value / 1000).toFixed(0) + 'k';
+                                    return '$' + value;
+                                }
+                            }
+                        }
+                    },
+                    interaction: { intersect: false, mode: 'index' }
+                }
+            });
+        }
+        
+        function renderMonthChart(year, month, monthDays) {
+            const canvas = document.getElementById(`month-chart-${year}-${month}`);
+            if (!canvas || monthDays.length === 0) return;
+            
+            const ctx = canvas.getContext('2d');
+            const chartId = `${year}-${month}`;
+            
+            // Sort by date
+            monthDays.sort((a, b) => a.date.localeCompare(b.date));
+            
+            const labels = monthDays.map(d => {
+                const [, , day] = d.date.split('-').map(Number);
+                return day;
+            });
+            const highs = monthDays.map(d => d.h);
+            const lows = monthDays.map(d => d.l);
+            
+            monthCharts[chartId] = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Daily High',
+                            data: highs,
+                            borderColor: '#22c55e',
+                            backgroundColor: 'transparent',
+                            borderWidth: 2,
+                            tension: 0.2,
+                            pointRadius: 3,
+                            pointBackgroundColor: '#22c55e',
+                            fill: false
+                        },
+                        {
+                            label: 'Daily Low',
+                            data: lows,
+                            borderColor: '#ef4444',
+                            backgroundColor: 'rgba(0, 212, 255, 0.3)',
+                            borderWidth: 2,
+                            tension: 0.2,
+                            pointRadius: 3,
+                            pointBackgroundColor: '#ef4444',
+                            fill: '-1'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: { color: '#fff', usePointStyle: true, boxWidth: 10 }
+                        },
+                        title: {
+                            display: true,
+                            text: `${monthNames[month]} ${year} - Daily Price Range`,
+                            color: '#fff',
+                            font: { size: 13 }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: 'rgba(255,255,255,0.05)', drawBorder: false },
+                            ticks: { color: '#888', font: { size: 10 }, maxTicksLimit: 10 }
+                        },
+                        y: {
+                            grid: { color: 'rgba(255,255,255,0.05)', drawBorder: false },
+                            ticks: {
+                                color: '#888',
+                                font: { size: 10 },
+                                callback: function(value) {
+                                    if (value >= 1000) return '$' + (value / 1000).toFixed(0) + 'k';
+                                    return '$' + value;
+                                }
+                            }
+                        }
+                    },
+                    interaction: { intersect: false, mode: 'index' }
+                }
+            });
+        }
+
+        function showError(message) {
+            document.getElementById('error').textContent = message;
+            document.getElementById('error').style.display = 'block';
+            document.getElementById('loading').style.display = 'none';
+        }
+        
+        init();
+    </script>
+</body>
+</html>

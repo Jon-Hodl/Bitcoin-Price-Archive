@@ -36,9 +36,9 @@ def load_prices():
 
 
 def save_prices(prices):
-    """Save price data to JSON."""
+    """Save price data to minified JSON."""
     with open(PRICES_FILE, 'w') as f:
-        json.dump(prices, f, indent=2)
+        json.dump(prices, f, separators=(',', ':'))
 
     print(f"✓ Saved {len(prices):,} price records to {PRICES_FILE}")
 
